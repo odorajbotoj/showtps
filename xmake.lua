@@ -11,7 +11,7 @@ if not has_config("vs_runtime") then
     set_runtimes("MD")
 end
 
-target("my-plugin") -- Change this to your plugin name.
+target("showtps") -- Change this to your plugin name.
     add_cxflags(
         "/EHa",
         "/utf-8",
@@ -24,6 +24,7 @@ target("my-plugin") -- Change this to your plugin name.
         "/w45204"
     )
     add_defines("NOMINMAX", "UNICODE")
+    add_defines("_HAS_CXX23=1")
     add_files("src/**.cpp")
     add_includedirs("src")
     add_packages("levilamina")
