@@ -11,7 +11,7 @@
             "plugin"
         ]
     },
-    "asset_url": "#",
+    "asset_url": "https://github.com/odorajbotoj/showtps/releases/download/v1.0.0/showtps-windows-x64.zip",
     "prerequisites": {
         "github.com/LiteLDev/LeviLamina": "0.12.x"
     },
