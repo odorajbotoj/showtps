@@ -1,5 +1,6 @@
 #include "showtps/showtps.h"
 
+#include <chrono>
 #include <format>
 #include <memory>
 #include <string>
@@ -10,7 +11,6 @@
 #include "ll/api/command/CommandHandle.h"
 #include "ll/api/command/CommandRegistrar.h"
 #include "ll/api/data/KeyValueDB.h"
-#include "ll/api/memory/Hook.h"
 #include "ll/api/schedule/Scheduler.h"
 #include "ll/api/schedule/Task.h"
 #include "ll/api/service/Bedrock.h"
@@ -19,13 +19,13 @@
 #include "mc/server/commands/CommandOrigin.h"
 #include "mc/server/commands/CommandOutput.h"
 #include "mc/server/commands/CommandPermissionLevel.h"
+#include "mc/util/ProfilerLite.h"
 #include "mc/world/actor/player/Player.h"
 #include "mc/world/level/Level.h"
 
 namespace {
 std::unique_ptr<ll::data::KeyValueDB> playerDb;
-ll::schedule::ServerTimeScheduler     mScheduler;
-double                                mMspt;
+ll::schedule::GameTickScheduler       mTickScheduler;
 } // namespace
 
 namespace showtps {
@@ -33,15 +33,6 @@ namespace showtps {
 static std::unique_ptr<ShowTps> instance;
 
 ShowTps& ShowTps::getInstance() { return *instance; }
-
-LL_TYPE_INSTANCE_HOOK(LevelTickHook, ll::memory::HookPriority::Normal, Level, "?tick@Level@@UEAAXXZ", void) {
-    // GMLIB::LevelAPI::mTicks++;
-    auto start = std::chrono::high_resolution_clock::now();
-    origin();
-    auto      elapsed    = std::chrono::high_resolution_clock::now() - start;
-    long long timeReslut = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-    ::mMspt              = (double)timeReslut / 1000;
-}
 
 bool ShowTps::load() {
     // open database
@@ -52,12 +43,9 @@ bool ShowTps::load() {
 }
 
 bool ShowTps::enable() {
-    // hook tick
-    LevelTickHook::hook();
-
     // new schedule
     using ll::chrono_literals::operator""_tick;
-    ::mScheduler.add<ll::schedule::RepeatTask>(20_tick, []() {
+    ::mTickScheduler.add<ll::schedule::RepeatTask>(20_tick, []() {
         auto level = ll::service::getLevel();
         if (level.has_value()) {
             level->forEachPlayer([](Player& player) -> bool {
@@ -65,14 +53,15 @@ bool ShowTps::enable() {
                     || (::playerDb->get(player.getUuid().asString()) == std::to_string(false))) {
                     return true;
                 }
-                double         currentTps = ::mMspt <= 50 ? 20 : (double)(1000.0 / ::mMspt);
-                TextPacketType type       = TextPacketType::Tip;
-                TextPacket     pkt        = TextPacket();
-                pkt.mType                 = type;
-                pkt.mMessage              = std::format(
+                double mspt       = (double)ProfilerLite::gProfilerLiteInstance.getServerTickTime().count() / 1000000.0;
+                double currentTps = mspt <= 50 ? 20 : (double)(1000.0 / mspt);
+                TextPacketType type = TextPacketType::Tip;
+                TextPacket     pkt  = TextPacket();
+                pkt.mType           = type;
+                pkt.mMessage        = std::format(
                     "MSPT:{}{:.2f}§r TPS:{}{:.2f}§r",
-                    ::mMspt > 50 ? "§c" : "§a",
-                    ::mMspt,
+                    mspt > 50 ? "§c" : "§a",
+                    mspt,
                     currentTps < 20 ? "§c" : "§a",
                     currentTps
                 );
@@ -108,8 +97,7 @@ bool ShowTps::enable() {
 }
 
 bool ShowTps::disable() {
-    LevelTickHook::unhook();
-    ::mScheduler.clear();
+    ::mTickScheduler.clear();
     return true;
 }
 
