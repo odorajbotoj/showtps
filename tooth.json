@@ -1,7 +1,7 @@
 {
     "format_version": 2,
     "tooth": "showtps",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "info": {
         "name": "showtps",
         "description": "Show server mspt and tps",
