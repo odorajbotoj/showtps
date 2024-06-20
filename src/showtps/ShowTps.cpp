@@ -92,6 +92,14 @@ bool ShowTps::enable() {
         output.success("Success.");
     });
 
+    auto& cmd2 = ll::command::CommandRegistrar::getInstance()
+                     .getOrCreateCommand("querytps", "QueryTps", CommandPermissionLevel::Any);
+    cmd2.overload().execute([](CommandOrigin const&, CommandOutput& output) {
+        double mspt       = (double)ProfilerLite::gProfilerLiteInstance.getServerTickTime().count() / 1000000.0;
+        double currentTps = mspt <= 50 ? 20 : (double)(1000.0 / mspt);
+        output.success(std::format("MSPT:{:.2f}§r TPS:{:.2f}§r", mspt, currentTps));
+    });
+
     // return
     return true;
 }
